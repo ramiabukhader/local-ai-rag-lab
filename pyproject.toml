@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "local-ai-rag-lab"
+version = "0.1.0"
+description = "Local-first RAG retrieval evaluation starter for business documents."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Rami Abukhader" }]
+keywords = ["rag", "retrieval", "evaluation", "local-ai", "privacy"]
+dependencies = []
+
+[project.optional-dependencies]
+# Optional: only needed if you extend the lab with local embedding models.
+embeddings = ["sentence-transformers>=2.2", "numpy>=1.24"]
+dev = ["pytest>=7.0"]
+
+[project.scripts]
+rag-ingest = "rag_lab.ingest:main"
+rag-evaluate = "rag_lab.evaluate:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

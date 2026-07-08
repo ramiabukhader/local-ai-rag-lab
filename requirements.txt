@@ -1,0 +1,6 @@
+# The core lab runs on the Python standard library only — there are no required
+# third-party dependencies. This keeps it fully local and offline.
+#
+# Optional extras are declared in pyproject.toml:
+#   pip install -e .[embeddings]   # local embedding-model backend
+#   pip install -e .[dev]          # pytest for the test suite

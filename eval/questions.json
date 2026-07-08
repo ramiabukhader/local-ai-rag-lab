@@ -1,0 +1,8 @@
+[
+  { "question": "How many days of annual leave do full-time employees get?", "relevant_docs": ["leave-policy"] },
+  { "question": "Can I carry over unused leave to the next year?", "relevant_docs": ["leave-policy"] },
+  { "question": "What is the daily limit for meal expenses?", "relevant_docs": ["expense-policy"] },
+  { "question": "Do I need a receipt to claim an expense?", "relevant_docs": ["expense-policy"] },
+  { "question": "How should I store my passwords securely?", "relevant_docs": ["security-guidelines"] },
+  { "question": "What should I do about a suspected phishing email?", "relevant_docs": ["security-guidelines"] }
+]
