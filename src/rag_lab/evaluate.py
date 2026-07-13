@@ -6,8 +6,9 @@ recall@k, and MRR. Every query is written to the audit log.
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from .audit import AuditLog
 from .config import Config
@@ -15,8 +16,66 @@ from .ingest import build_chunks, load_documents
 from .retriever import TfidfRetriever
 
 
-def load_eval(path: Path) -> List[dict]:
-    return json.loads(Path(path).read_text(encoding="utf-8"))
+class DatasetValidationError(ValueError):
+    """An actionable, content-safe evaluation dataset error."""
+
+
+def load_eval(path: Path, available_doc_ids: Optional[Iterable[str]] = None) -> List[dict]:
+    dataset_path = Path(path)
+    try:
+        raw = dataset_path.read_text(encoding="utf-8")
+    except OSError as error:
+        raise DatasetValidationError(
+            f"cannot read evaluation dataset {dataset_path}: {error.strerror or error}"
+        ) from error
+    try:
+        questions = json.loads(raw)
+    except json.JSONDecodeError as error:
+        raise DatasetValidationError(
+            f"invalid JSON in {dataset_path} at line {error.lineno}, column {error.colno}"
+        ) from error
+
+    if not isinstance(questions, list):
+        raise DatasetValidationError(f"{dataset_path}: top-level value must be an array")
+    if not questions:
+        raise DatasetValidationError(f"{dataset_path}: dataset must contain at least one question")
+
+    known_docs = set(available_doc_ids) if available_doc_ids is not None else None
+    seen_ids = set()
+    allowed_keys = {"id", "question", "relevant_docs"}
+    for index, item in enumerate(questions):
+        location = f"{dataset_path}: record {index + 1}"
+        if not isinstance(item, dict):
+            raise DatasetValidationError(f"{location} must be an object")
+        unknown = sorted(set(item) - allowed_keys)
+        if unknown:
+            raise DatasetValidationError(f"{location} has unknown field(s): {', '.join(unknown)}")
+
+        question_id = item.get("id")
+        if not isinstance(question_id, str) or not question_id.strip():
+            raise DatasetValidationError(f"{location} requires a nonempty string id")
+        if question_id in seen_ids:
+            raise DatasetValidationError(f"{location} duplicates question id {question_id!r}")
+        seen_ids.add(question_id)
+        location = f"{dataset_path}: question {question_id!r}"
+
+        question = item.get("question")
+        if not isinstance(question, str) or not question.strip():
+            raise DatasetValidationError(f"{location} requires a nonempty string question")
+        relevant_docs = item.get("relevant_docs")
+        if not isinstance(relevant_docs, list) or not relevant_docs:
+            raise DatasetValidationError(f"{location} requires a nonempty relevant_docs array")
+        if any(not isinstance(doc_id, str) or not doc_id.strip() for doc_id in relevant_docs):
+            raise DatasetValidationError(f"{location} relevant_docs values must be nonempty strings")
+        if len(set(relevant_docs)) != len(relevant_docs):
+            raise DatasetValidationError(f"{location} relevant_docs must not contain duplicates")
+        if known_docs is not None:
+            missing = sorted(set(relevant_docs) - known_docs)
+            if missing:
+                raise DatasetValidationError(
+                    f"{location} references unknown document id(s): {', '.join(missing)}"
+                )
+    return questions
 
 
 def evaluate(cfg: Optional[Config] = None) -> Tuple[Dict[str, float], List[dict]]:
@@ -25,9 +84,9 @@ def evaluate(cfg: Optional[Config] = None) -> Tuple[Dict[str, float], List[dict]
     documents = load_documents(cfg.docs_dir)
     chunks = build_chunks(documents, cfg.chunk_size, cfg.chunk_overlap)
     retriever = TfidfRetriever().fit(chunks)
-    audit = AuditLog(cfg.logs_dir / "audit.jsonl", cfg.log_query_text)
 
-    questions = load_eval(cfg.eval_path)
+    questions = load_eval(cfg.eval_path, (doc_id for doc_id, _ in documents))
+    audit = AuditLog(cfg.logs_dir / "audit.jsonl", cfg.log_query_text)
     total = len(questions)
     recall_key = f"recall@{cfg.top_k}"
 
@@ -76,7 +135,11 @@ def evaluate(cfg: Optional[Config] = None) -> Tuple[Dict[str, float], List[dict]
 def main() -> None:
     cfg = Config.from_env()
     recall_key = f"recall@{cfg.top_k}"
-    metrics, per_question = evaluate(cfg)
+    try:
+        metrics, per_question = evaluate(cfg)
+    except DatasetValidationError as error:
+        print(f"rag-evaluate: {error}", file=sys.stderr)
+        raise SystemExit(2) from None
 
     print("Per-question results:")
     for row in per_question:
