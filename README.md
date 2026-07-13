@@ -64,6 +64,20 @@ The core package uses only the Python standard library and runs on Python 3.9 th
 2. Add labeled questions to `eval/questions.json` (`question` → expected source doc).
 3. Tune chunking in `.env`, then re-run `rag-ingest` followed by `rag-evaluate`.
 
+Each evaluation record has a stable unique ID, a nonempty question, and one or
+more document IDs matching Markdown filenames (without `.md`):
+
+```json
+{
+  "id": "leave-entitlement",
+  "question": "How much annual leave is available?",
+  "relevant_docs": ["leave-policy"]
+}
+```
+
+The evaluator rejects malformed JSON, duplicate IDs, empty fields, and unknown
+document references before retrieval or audit logging begins.
+
 ## Configuration
 
 | Variable | Default | Purpose |
