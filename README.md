@@ -1,140 +1,96 @@
-# Local AI RAG Lab
+# 🔎 local-ai-rag-lab
 
-A **local-first, privacy-preserving starter** for evaluating retrieval quality
-over your business documents — before you commit to a heavier RAG stack. The
-core runs entirely on the Python standard library: **no API keys, no network
-calls, no data leaving your machine.**
+**A local-first, privacy-preserving starter for evaluating retrieval quality over your business documents — before you commit to a heavier RAG stack.**
 
-> **Disclaimer & privacy**
-> Ships with **fictional sample documents only** — no real customer, legal, or
-> proprietary content. The `.env.example` contains placeholders only. This lab is
-> designed so sensitive documents can be evaluated **entirely offline**.
+![Python](https://img.shields.io/badge/python-3.9%2B-blue)
+![License: MIT](https://img.shields.io/badge/license-MIT-green)
+![Dependencies](https://img.shields.io/badge/core%20deps-standard%20library-brightgreen)
+![Offline](https://img.shields.io/badge/network-none-lightgrey)
 
-## Problem
+Retrieval is where most RAG quality is won or lost. This lab lets you measure it — **hit@1, recall@k, MRR** — on your own documents, fully offline, with **zero API keys and zero cloud calls**.
 
-RAG demos are easy; knowing whether retrieval actually finds the right content is
-hard. Teams reach for hosted embedding APIs on day one — sending internal
-documents to third parties — without a baseline to measure against. This lab
-gives you a transparent, offline retrieval baseline and a simple evaluation
-harness so you can measure first and add complexity deliberately.
+> ⏱️ **60-second demo:** clone → `pip install -e .` → `rag-ingest` → `rag-evaluate` → get metrics.
 
-## Scope
+<!-- 📸 Add a terminal gif/screenshot of `rag-evaluate` output here — biggest single lever on stars. -->
+<!-- ![demo](docs/demo.gif) -->
 
-- **Ingestion** — load local Markdown documents and split them into overlapping
-  chunks.
-- **Retrieval** — a dependency-free TF-IDF + cosine-similarity retriever.
-- **Evaluation** — score a labelled question set with `hit@1`, `recall@k`, and
-  `MRR`.
-- **Audit** — append-only JSONL log of every query (with an option to store only
-  a hash of the query text for privacy).
+---
 
-Out of scope: a hosted vector database or any cloud LLM. The README shows where
-to plug in a **local** embedding backend if you want to go further.
+## Why this exists
 
-## Architecture
+Before wiring up a vector DB, an embedding API, and an LLM, you should know one thing: **can your retriever even find the right chunk?** This lab gives you that answer in a minute, on your data, without sending a single byte off your machine.
 
-```mermaid
-flowchart LR
-    D[Local documents] --> I[Ingest + chunk]
-    I --> R[TF-IDF retriever]
-    Q[Eval questions] --> E[Evaluation harness]
-    R --> E
-    E --> M[Metrics: hit@1 / recall@k / MRR]
-    E --> A[[Append-only audit log]]
-```
+- 🔒 **Private by default** — standard-library TF-IDF baseline; no external services, optional query-hash logging.
+- ⚡ **Zero-setup baseline** — no GPU, no API keys, runs on a laptop.
+- 📊 **Real metrics** — hit@1, recall@k, MRR against a labeled question set.
+- 🧩 **Swap-in ready** — drop in dense embeddings (`sentence-transformers`) when you want to compare.
 
-## Quick start
-
-Requires **Python 3.9+**. No third-party packages are needed for the core lab.
+## Quickstart
 
 ```bash
-# Optional but recommended: install as an editable package to get CLI entry points
+git clone https://github.com/ramiabukhader/local-ai-rag-lab
+cd local-ai-rag-lab
 pip install -e .
 
-# 1. Ingest the sample documents into chunks
-python -m rag_lab.ingest          # or: rag-ingest
-
-# 2. Run the retrieval evaluation
-python -m rag_lab.evaluate        # or: rag-evaluate
+cp .env.example .env          # optional — sensible defaults work out of the box
+rag-ingest                    # load & chunk data/sample_docs/
+rag-evaluate                  # score eval/questions.json
+# → hit@1: 1.0  recall@3: 1.0  mrr: 1.0
 ```
 
-Without installing, run from the repo root with `PYTHONPATH=src`:
+No install? `PYTHONPATH=src python -m rag_lab.evaluate`
 
-```bash
-PYTHONPATH=src python -m rag_lab.evaluate
-```
+## Use your own documents
 
-Example output:
-
-```
-Aggregate metrics:
-  questions: 6
-  hit@1: 1.0
-  recall@3: 1.0
-  mrr: 1.0
-```
+1. Drop your files in `data/sample_docs/`.
+2. Add labeled questions to `eval/questions.json` (`question` → expected source doc).
+3. Tune chunking in `.env`, then re-run `rag-ingest && rag-evaluate`.
 
 ## Configuration
 
-Copy `.env.example` to `.env` to tune behaviour (all optional):
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `RAG_CHUNK_SIZE` | 80 | Words per chunk |
+| `RAG_CHUNK_OVERLAP` | 20 | Overlap between chunks |
+| `RAG_TOP_K` | 3 | Results returned per query |
+| `RAG_LOG_QUERY_TEXT` | true | Set `false` to hash query text in the audit log |
 
-| Variable              | Default | Purpose                                              |
-|-----------------------|---------|------------------------------------------------------|
-| `RAG_CHUNK_SIZE`      | `80`    | Words per chunk                                      |
-| `RAG_CHUNK_OVERLAP`   | `20`    | Overlap between chunks                               |
-| `RAG_TOP_K`           | `3`     | Results retrieved per query                          |
-| `RAG_LOG_QUERY_TEXT`  | `true`  | `false` = store only a SHA-256 hash of the query     |
+## What the metrics mean
 
-## Folder structure
+- **hit@1 / precision@1** — was the correct document the top result?
+- **recall@k** — was it anywhere in the top *k*?
+- **MRR** — average of 1/rank of the correct result (higher = it ranks nearer the top).
+
+### Baseline results by chunking strategy
+
+These results use the six labeled questions and three fictional documents committed in this repository. Re-run `rag-evaluate` on your own corpus before choosing a production configuration.
+
+| Chunk size | Overlap | Precision@1 (hit@1) | Recall@3 | MRR |
+|-----------:|--------:|---------------------:|---------:|----:|
+| 40 words | 10 words | 1.000 | 1.000 | 1.000 |
+| 80 words (default) | 20 words | 1.000 | 1.000 | 1.000 |
+| 120 words | 30 words | 1.000 | 1.000 | 1.000 |
+
+The sample corpus is intentionally small, so the identical scores are a smoke-test baseline rather than evidence that chunk size never matters. Larger, varied corpora should expose the precision/recall trade-off more clearly.
+
+## Project layout
 
 ```
-local-ai-rag-lab/
-├── README.md
-├── LICENSE
-├── pyproject.toml
-├── requirements.txt
-├── .env.example
-├── .gitignore
-├── data/sample_docs/          # fictional business documents
-├── eval/questions.json        # labelled evaluation set
-├── src/rag_lab/
-│   ├── config.py              # config + tiny .env loader
-│   ├── ingest.py              # load & chunk documents
-│   ├── retriever.py           # TF-IDF cosine retriever
-│   ├── evaluate.py            # hit@1 / recall@k / MRR harness
-│   └── audit.py               # append-only query audit log
-└── tests/test_retrieval.py
+src/rag_lab/
+  config.py     # .env loader + defaults
+  ingest.py     # document loading & chunking
+  retriever.py  # TF-IDF + cosine-similarity retrieval
+  evaluate.py   # evaluation harness (hit@1 / recall@k / MRR)
+  audit.py      # append-only query audit log
+data/sample_docs/   # fictional sample documents
+eval/questions.json # labeled evaluation set
+tests/              # pytest suite
 ```
-
-## Extending to local embedding models
-
-The TF-IDF retriever is your baseline. To try dense retrieval **without leaving
-your machine**, install the optional extra and swap the retriever:
-
-```bash
-pip install -e .[embeddings]     # sentence-transformers + numpy, run locally
-```
-
-Or point the lab at a local embedding server (e.g. [Ollama](https://ollama.com))
-via the placeholders in `.env.example`. The evaluation harness and audit log are
-retriever-agnostic, so you can compare a local embedding model against the
-baseline using the same metrics.
-
-## Limitations
-
-- The TF-IDF baseline is lexical: it matches words, not meaning. That is the
-  point — it is the honest baseline to beat.
-- The sample evaluation set is tiny and hand-labelled; replace it with your own
-  questions and relevance labels for a meaningful measurement.
-- No answer-generation step is included; this lab measures **retrieval**, which
-  is where most RAG quality is won or lost.
 
 ## Roadmap
 
-- [ ] Pluggable retriever interface with a local embedding implementation
-- [ ] Additional metrics (nDCG, precision@k)
-- [ ] Optional local re-ranking step
+See [open issues](https://github.com/ramiabukhader/local-ai-rag-lab/issues) — CI, Docker, chunk-size benchmarks, and a dense-embedding comparison are next.
 
 ## License
 
-Released under the [MIT License](LICENSE).
+MIT © Rami Abukhader
