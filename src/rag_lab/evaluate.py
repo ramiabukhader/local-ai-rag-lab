@@ -80,6 +80,8 @@ def load_eval(path: Path, available_doc_ids: Optional[Iterable[str]] = None) -> 
 
 def evaluate(cfg: Optional[Config] = None) -> Tuple[Dict[str, float], List[dict]]:
     cfg = cfg or Config.from_env()
+    if isinstance(cfg.top_k, bool) or not isinstance(cfg.top_k, int) or cfg.top_k <= 0:
+        raise DatasetValidationError("top_k must be a positive integer")
 
     documents = load_documents(cfg.docs_dir)
     chunks = build_chunks(documents, cfg.chunk_size, cfg.chunk_overlap)

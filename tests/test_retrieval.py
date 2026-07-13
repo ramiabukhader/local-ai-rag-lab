@@ -1,12 +1,14 @@
 """Tests for the retriever and evaluation harness."""
 import importlib
 import json
+import random
 
 import pytest
 
 from rag_lab.config import Config
 from rag_lab.evaluate import DatasetValidationError, evaluate, load_eval
 from rag_lab.ingest import build_chunks
+from rag_lab.ingest import Chunk
 from rag_lab.retriever import TfidfRetriever
 
 
@@ -20,11 +22,62 @@ def test_retriever_ranks_relevant_doc_first():
     assert top and top[0].doc_id == "leave-policy"
 
 
+def test_retriever_ties_are_independent_of_input_order():
+    chunks = [
+        Chunk("z-doc#0", "z-doc", "shared term"),
+        Chunk("a-doc#1", "a-doc", "shared term"),
+        Chunk("a-doc#0", "a-doc", "shared term"),
+    ]
+    expected = ["a-doc#0", "a-doc#1"]
+    observed = []
+    for seed in range(10):
+        shuffled = list(chunks)
+        random.Random(seed).shuffle(shuffled)
+        results = TfidfRetriever().fit(shuffled).query("shared term", top_k=2)
+        observed.append([result.chunk_id for result in results])
+    assert observed == [expected] * 10
+
+
+def test_retriever_repeated_fits_produce_identical_results():
+    chunks = [
+        Chunk("b#0", "b", "repeatable score"),
+        Chunk("a#0", "a", "repeatable score"),
+    ]
+    first = TfidfRetriever().fit(chunks).query("repeatable score", top_k=2)
+    second = TfidfRetriever().fit(reversed(chunks)).query("repeatable score", top_k=2)
+    assert [(row.chunk_id, row.score) for row in first] == [
+        (row.chunk_id, row.score) for row in second
+    ]
+
+
+@pytest.mark.parametrize("top_k", [0, -1, 1.5, True, None])
+def test_retriever_rejects_invalid_top_k(top_k):
+    retriever = TfidfRetriever().fit([Chunk("doc#0", "doc", "text")])
+    with pytest.raises(ValueError, match="positive integer"):
+        retriever.query("text", top_k=top_k)
+
+
+def test_retriever_rejects_duplicate_chunk_ids():
+    chunks = [
+        Chunk("duplicate", "a", "one"),
+        Chunk("duplicate", "b", "two"),
+    ]
+    with pytest.raises(ValueError, match="chunk_id values must be unique"):
+        TfidfRetriever().fit(chunks)
+
+
 def test_evaluation_meets_baseline_on_samples():
     metrics, _ = evaluate(Config())
     assert metrics["questions"] == 6
     # The sample set is designed so every question's relevant doc is retrievable.
     assert metrics[f"recall@{Config().top_k}"] == 1.0
+
+
+def test_evaluation_rejects_invalid_top_k_before_logging(tmp_path):
+    cfg = Config(top_k=0, logs_dir=tmp_path / "logs")
+    with pytest.raises(DatasetValidationError, match="positive integer"):
+        evaluate(cfg)
+    assert not cfg.logs_dir.exists()
 
 
 def test_load_eval_accepts_multiple_relevant_documents(tmp_path):
