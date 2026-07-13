@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from .audit import AuditLog
 from .config import Config
@@ -19,7 +19,7 @@ def load_eval(path: Path) -> List[dict]:
     return json.loads(Path(path).read_text(encoding="utf-8"))
 
 
-def evaluate(cfg: Config | None = None) -> Tuple[Dict[str, float], List[dict]]:
+def evaluate(cfg: Optional[Config] = None) -> Tuple[Dict[str, float], List[dict]]:
     cfg = cfg or Config.from_env()
 
     documents = load_documents(cfg.docs_dir)

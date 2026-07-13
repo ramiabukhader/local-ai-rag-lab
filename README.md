@@ -3,16 +3,32 @@
 **A local-first, privacy-preserving starter for evaluating retrieval quality over your business documents — before you commit to a heavier RAG stack.**
 
 ![Python](https://img.shields.io/badge/python-3.9%2B-blue)
+[![CI](https://github.com/ramiabukhader/local-ai-rag-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/ramiabukhader/local-ai-rag-lab/actions/workflows/ci.yml)
 ![License: MIT](https://img.shields.io/badge/license-MIT-green)
 ![Dependencies](https://img.shields.io/badge/core%20deps-standard%20library-brightgreen)
 ![Offline](https://img.shields.io/badge/network-none-lightgrey)
 
 Retrieval is where most RAG quality is won or lost. This lab lets you measure it — **hit@1, recall@k, MRR** — on your own documents, fully offline, with **zero API keys and zero cloud calls**.
 
-> ⏱️ **60-second demo:** clone → `pip install -e .` → `rag-ingest` → `rag-evaluate` → get metrics.
+## 60-second demo
 
-<!-- 📸 Add a terminal gif/screenshot of `rag-evaluate` output here — biggest single lever on stars. -->
-<!-- ![demo](docs/demo.gif) -->
+![Terminal demo showing installation, ingestion, evaluation, and perfect sample metrics](docs/demo.png)
+
+Run the same workflow yourself:
+
+```bash
+git clone https://github.com/ramiabukhader/local-ai-rag-lab.git
+cd local-ai-rag-lab
+./demo.sh
+```
+
+On Windows PowerShell:
+
+```powershell
+git clone https://github.com/ramiabukhader/local-ai-rag-lab.git
+cd local-ai-rag-lab
+powershell -ExecutionPolicy Bypass -File .\demo.ps1
+```
 
 ---
 
@@ -30,7 +46,9 @@ Before wiring up a vector DB, an embedding API, and an LLM, you should know one 
 ```bash
 git clone https://github.com/ramiabukhader/local-ai-rag-lab
 cd local-ai-rag-lab
-pip install -e .
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
 
 cp .env.example .env          # optional — sensible defaults work out of the box
 rag-ingest                    # load & chunk data/sample_docs/
@@ -38,13 +56,13 @@ rag-evaluate                  # score eval/questions.json
 # → hit@1: 1.0  recall@3: 1.0  mrr: 1.0
 ```
 
-No install? `PYTHONPATH=src python -m rag_lab.evaluate`
+The core package uses only the Python standard library and runs on Python 3.9 through 3.14.
 
 ## Use your own documents
 
 1. Drop your files in `data/sample_docs/`.
 2. Add labeled questions to `eval/questions.json` (`question` → expected source doc).
-3. Tune chunking in `.env`, then re-run `rag-ingest && rag-evaluate`.
+3. Tune chunking in `.env`, then re-run `rag-ingest` followed by `rag-evaluate`.
 
 ## Configuration
 
@@ -89,7 +107,7 @@ tests/              # pytest suite
 
 ## Roadmap
 
-See [open issues](https://github.com/ramiabukhader/local-ai-rag-lab/issues) — CI, Docker, chunk-size benchmarks, and a dense-embedding comparison are next.
+See [open issues](https://github.com/ramiabukhader/local-ai-rag-lab/issues) for planned chunk-size benchmarks and a dense-embedding comparison.
 
 ## License
 
