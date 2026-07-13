@@ -39,6 +39,7 @@ Before wiring up a vector DB, an embedding API, and an LLM, you should know one 
 - 🔒 **Private by default** — standard-library TF-IDF baseline; no external services, optional query-hash logging.
 - ⚡ **Zero-setup baseline** — no GPU, no API keys, runs on a laptop.
 - 📊 **Real metrics** — hit@1, recall@k, MRR against a labeled question set.
+- 🔁 **Reproducible ranking** — equal scores use stable document/chunk ID ordering.
 - 🧩 **Swap-in ready** — drop in dense embeddings (`sentence-transformers`) when you want to compare.
 
 ## Quickstart
@@ -86,6 +87,10 @@ document references before retrieval or audit logging begins.
 | `RAG_CHUNK_OVERLAP` | 20 | Overlap between chunks |
 | `RAG_TOP_K` | 3 | Results returned per query |
 | `RAG_LOG_QUERY_TEXT` | true | Set `false` to hash query text in the audit log |
+
+`RAG_TOP_K` must be a positive integer. Equal-score results are ordered by
+document ID and then chunk ID, so changing ingestion input order does not change
+which chunks cross the top-k boundary.
 
 ## What the metrics mean
 

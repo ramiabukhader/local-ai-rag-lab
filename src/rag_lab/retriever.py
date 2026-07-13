@@ -40,7 +40,10 @@ class TfidfRetriever:
         self._idf: Dict[str, float] = {}
 
     def fit(self, chunks: Iterable) -> "TfidfRetriever":
-        self._chunks = list(chunks)
+        self._chunks = sorted(chunks, key=lambda chunk: (chunk.doc_id, chunk.chunk_id))
+        chunk_ids = [chunk.chunk_id for chunk in self._chunks]
+        if len(set(chunk_ids)) != len(chunk_ids):
+            raise ValueError("chunk_id values must be unique for deterministic retrieval")
         tokenized = [tokenize(c.text) for c in self._chunks]
         n = len(tokenized)
 
@@ -71,6 +74,8 @@ class TfidfRetriever:
         return vec
 
     def query(self, text: str, top_k: int = 3) -> List[RetrievalResult]:
+        if isinstance(top_k, bool) or not isinstance(top_k, int) or top_k <= 0:
+            raise ValueError("top_k must be a positive integer")
         qvec = self._vectorize(tokenize(text))
         qnorm = math.sqrt(sum(w * w for w in qvec.values())) or 1.0
 
@@ -89,5 +94,5 @@ class TfidfRetriever:
                 RetrievalResult(chunk.chunk_id, chunk.doc_id, dot / (qnorm * norm), chunk.text)
             )
 
-        results.sort(key=lambda r: r.score, reverse=True)
+        results.sort(key=lambda result: (-result.score, result.doc_id, result.chunk_id))
         return results[:top_k]
