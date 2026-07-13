@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple
 
 from .audit import AuditLog
-from .config import Config
+from .config import Config, ConfigError
 from .ingest import build_chunks, load_documents
 from .retriever import TfidfRetriever
 
@@ -135,11 +135,11 @@ def evaluate(cfg: Optional[Config] = None) -> Tuple[Dict[str, float], List[dict]
 
 
 def main() -> None:
-    cfg = Config.from_env()
-    recall_key = f"recall@{cfg.top_k}"
     try:
+        cfg = Config.from_env()
+        recall_key = f"recall@{cfg.top_k}"
         metrics, per_question = evaluate(cfg)
-    except DatasetValidationError as error:
+    except (ConfigError, DatasetValidationError) as error:
         print(f"rag-evaluate: {error}", file=sys.stderr)
         raise SystemExit(2) from None
 

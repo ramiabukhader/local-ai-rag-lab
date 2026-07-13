@@ -23,8 +23,17 @@ def _load_dotenv(path: Path) -> None:
         os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
 
 
+class ConfigError(ValueError):
+    """An actionable configuration value error."""
+
+
 def _as_bool(value: str) -> bool:
-    return value.strip().lower() in ("1", "true", "yes", "on")
+    normalized = value.strip().lower()
+    if normalized in ("1", "true", "yes", "on"):
+        return True
+    if normalized in ("0", "false", "no", "off"):
+        return False
+    raise ConfigError("boolean value must be one of: true, false, 1, 0, yes, no, on, off")
 
 
 @dataclass
@@ -36,7 +45,7 @@ class Config:
     chunk_size: int = 80        # words per chunk
     chunk_overlap: int = 20     # words of overlap between chunks
     top_k: int = 3
-    log_query_text: bool = True  # False -> store only a SHA-256 hash of the query
+    log_query_text: bool = False  # Raw query text requires explicit opt-in
 
     @classmethod
     def from_env(cls) -> "Config":
