@@ -36,7 +36,7 @@ powershell -ExecutionPolicy Bypass -File .\demo.ps1
 
 Before wiring up a vector DB, an embedding API, and an LLM, you should know one thing: **can your retriever even find the right chunk?** This lab gives you that answer in a minute, on your data, without sending a single byte off your machine.
 
-- 🔒 **Private by default** — standard-library TF-IDF baseline; no external services, optional query-hash logging.
+- 🔒 **Private by default** — no external services; audit logs hash queries unless raw text is explicitly enabled.
 - ⚡ **Zero-setup baseline** — no GPU, no API keys, runs on a laptop.
 - 📊 **Real metrics** — hit@1, recall@k, MRR against a labeled question set.
 - 🔁 **Reproducible ranking** — equal scores use stable document/chunk ID ordering.
@@ -86,11 +86,16 @@ document references before retrieval or audit logging begins.
 | `RAG_CHUNK_SIZE` | 80 | Words per chunk |
 | `RAG_CHUNK_OVERLAP` | 20 | Overlap between chunks |
 | `RAG_TOP_K` | 3 | Results returned per query |
-| `RAG_LOG_QUERY_TEXT` | true | Set `false` to hash query text in the audit log |
+| `RAG_LOG_QUERY_TEXT` | false | Set `true` only to opt into raw query text in audit logs |
 
 `RAG_TOP_K` must be a positive integer. Equal-score results are ordered by
 document ID and then chunk ID, so changing ingestion input order does not change
 which chunks cross the top-k boundary.
+
+Audit entries always contain a deterministic SHA-256 query hash and retrieved
+document/chunk IDs with scores. By default they omit the raw query, and they
+never contain retrieved chunk text. Boolean environment values must be one of
+`true/false`, `1/0`, `yes/no`, or `on/off`; invalid values fail explicitly.
 
 ## What the metrics mean
 

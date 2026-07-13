@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import List, Tuple
@@ -50,9 +51,13 @@ def build_chunks(documents, chunk_size: int = 80, overlap: int = 20) -> List[Chu
 
 
 def main() -> None:
-    from .config import Config
+    from .config import Config, ConfigError
 
-    cfg = Config.from_env()
+    try:
+        cfg = Config.from_env()
+    except ConfigError as error:
+        print(f"rag-ingest: {error}", file=sys.stderr)
+        raise SystemExit(2) from None
     documents = load_documents(cfg.docs_dir)
     chunks = build_chunks(documents, cfg.chunk_size, cfg.chunk_overlap)
 
